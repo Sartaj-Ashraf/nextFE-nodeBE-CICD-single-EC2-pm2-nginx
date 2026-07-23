@@ -53,7 +53,7 @@ jobs:
 
           mkdir -p release/backend release/frontend
           
-          cp -r /backend release/backend
+          cp -r backend release/backend
 
           # ── Frontend (standalone mode) ────────────────────────
           cp -r frontend/.next/standalone release/frontend/standalone
