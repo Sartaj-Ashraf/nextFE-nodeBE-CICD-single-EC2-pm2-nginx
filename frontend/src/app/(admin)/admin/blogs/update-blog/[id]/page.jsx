@@ -1,6 +1,13 @@
 "use client";
 import React, { useState, useCallback, useMemo, useEffect } from "react";
-import JoditEditor from "jodit-react";
+import dynamic from "next/dynamic";
+
+const JoditEditor = dynamic(
+  () => import("jodit-react"),
+  {
+    ssr: false,
+  }
+);
 import {customFetch} from "@/utils/customFetch";
 import { MdDelete } from "react-icons/md";
 import { toast } from "react-hot-toast";
