@@ -52,7 +52,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          mkdir release/backend release/frontend
+          mkdir -p release/backend release/frontend
 
           cp -r backend release/backend
 
@@ -325,7 +325,7 @@ jobs:
 
             pm2 status
             rm -f /tmp/release.tar.gz
-            
+
           displayName: 'Deploy on Server'
           timeoutInMinutes: 10
 
