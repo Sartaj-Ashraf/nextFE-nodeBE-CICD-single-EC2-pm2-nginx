@@ -38,7 +38,7 @@ cloudinary.config({
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-if (process.env.NODE_ENV === "devlopment") {
+if (process.env.ENABLE_MORGAN) {
   app.use(morgan("dev"));
 }
 app.use(express.static(path.resolve(__dirname, "./public")));
@@ -47,11 +47,14 @@ app.use(cookieParser());
 
 app.use(
   cors({
-    origin: true,
+    origin: [process.env.PRODUCTION_URL2, process.env.PRODUCTION_URL1],
     methods: ["GET", "POST", "PUT", "DELETE","OPTIONS","PATCH"],
     credentials: true,
   })
 );
+app.use("/api/v1/health", (req, res) => {
+  res.status(200).json({ msg: "Health check passed" });
+});
 
 // use routes here
 app.use("/api/v1/auth", authRouter);
@@ -74,7 +77,7 @@ app.use("*", (req, res) => {
 //err HANDLING  middleware
 app.use(errorHandlerMiddleware);
 
-const port = process.env.PORT;
+const port = process.env.PORT || 5100;
 try {
   await mongoose.connect(process.env.MONGO_URL);
   app.listen(port, () => {
