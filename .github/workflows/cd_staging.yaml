@@ -1,0 +1,75 @@
+name: "Push changes to the staging environment"
+
+on:
+  push:
+    branches:
+      - staging
+pr: none
+
+env:
+  NODE_VERSION: '20'
+
+
+jobs:
+  build_and_compile_app:
+    runs-on: ubuntu-latest
+
+    concurrency:
+      group: "staging-server-environment"
+      cancel-in-progress: true
+
+    steps:  
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install backend Dependencies
+        working-directory: backend
+        run: npm ci
+      
+      - name: Install frontend Dependencies
+        working-directory: frontend
+        run: npm ci
+    
+
+      - name: Check env injection
+        run: |
+          echo "Check env injection: ${{ secrets.NEXT_PUBLIC_API_URL }}"
+          echo "Check env injection: ${{ secrets.NODE_ENV }}"
+        
+      - name: Build frontend
+        working-directory: frontend
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+        run: npm run build
+
+      - name: Create Deployment Artifact
+        run: |
+          set -euo pipefail
+
+          mkdir -p release/backend release/frontend
+          
+          cp -r /backend release/backend
+
+          # ── Frontend (standalone mode) ────────────────────────
+          cp -r frontend/.next/standalone release/frontend/standalone
+          cp -r frontend/.next/static     release/frontend/standalone/.next/static
+          cp -r frontend/public           release/frontend/standalone/public
+
+          tar -czf release.tar.gz 
+          echo "Size of the file is $(ls -lh release.tar.gz | awk '{print $5}')"
+          
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: application-release-artifact
+          path: |
+            release.tar.gz
+          retention-days: 7
+    
+    
