@@ -6,7 +6,7 @@ on:
       - staging
 
 env:
-  NODE_VERSION: '20'
+  NODE_VERSION: '22'
 
 
 jobs:
@@ -52,8 +52,8 @@ jobs:
         run: |
           set -euo pipefail
 
-          mkdir -p release/backend release/frontend
-          
+          mkdir release/backend release/frontend
+
           cp -r backend release/backend
 
           # ── Frontend (standalone mode) ────────────────────────
@@ -62,7 +62,7 @@ jobs:
           cp -r frontend/public           release/frontend/standalone/public
 
           tar -czf release.tar.gz release
-          echo "Size of the file is $(ls -lh release.tar.gz | awk '{print $5}')"
+          echo "Size of the file is $(du -h release.tar.gz | awk '{print $1}')"
           
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
@@ -71,5 +71,270 @@ jobs:
           path: |
             release.tar.gz
           retention-days: 7
-    
-    
+
+  deploy_to_staging_server:
+    runs-on: ubuntu-latest
+    needs:
+      - build_and_compile_app
+    environment: staging-server-environment
+
+    concurrency:
+      group: "staging-server-environment"
+      cancel-in-progress: true
+
+    steps:
+      - name: Download artifact from pipeline
+        uses: actions/download-artifact@v4
+        with:
+          name: application-release-artifact
+
+      - name: Upload release to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.STAGING_SERVER_IP }}
+          username: ${{ secrets.STAGING_SERVER_USER }}
+          key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+          source: "release.tar.gz"
+          target: "/tmp"
+      
+      - name: Extract files on the server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.STAGING_SERVER_IP }}
+          username: ${{ secrets.STAGING_SERVER_USER }}
+          key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+          command_timeout: 15m
+          script_stop: true
+          envs: |
+            CLOUD_API_KEY=${{ secrets.CLOUD_API_KEY }}
+            CLOUD_API_SECRET=${{ secrets.CLOUD_API_SECRET }}
+            CLOUD_NAME=${{ secrets.CLOUD_NAME }}
+            ENABLE_MORGAN=${{ secrets.ENABLE_MORGAN }}
+            JWT_EXPIRES_IN=${{ secrets.JWT_EXPIRES_IN }}
+            PORT=${{ secrets.PORT }}
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
+            MONGO_URL=${{ secrets.MONGO_URL }}
+            NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}
+            NODE_ENV=${{ secrets.NODE_ENV }}
+            PRODUCTION_CLIENT_URL1=${{ secrets.PRODUCTION_CLIENT_URL1 }}
+            PRODUCTION_CLIENT_URL2=${{ secrets.PRODUCTION_CLIENT_URL2 }}
+            STAGING_HOST__IP=${{ secrets.STAGING_HOST__IP }}
+          script: | 
+            set -Eeuo pipefail
+
+          
+            APP_NAME="portfolio"
+            BASE_DIR="$HOME/apps/${APP_NAME}"
+            RELEASES_DIR="${BASE_DIR}/releases"
+            SHARED_DIR="${BASE_DIR}/shared"
+            CURRENT_LINK="${BASE_DIR}/current"
+
+
+            TIMESTAMP=$(date +%Y%m%d%H%M%S)
+            RELEASE_DIR="${RELEASES_DIR}/${TIMESTAMP}"
+            
+            mkdir -p "${RELEASES_DIR}" "${SHARED_DIR}"
+
+            # Capture previous release BEFORE any mutation — used for rollback.
+            PREVIOUS_RELEASE=""
+            if [ -L "${CURRENT_LINK}" ]; then
+              PREVIOUS_RELEASE=$(readlink -f "${CURRENT_LINK}")
+            fi
+            echo "Previous release: ${PREVIOUS_RELEASE:-none}"
+
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+
+            echo "Node: $(node -v) at ${NODE_BIN}  NPM: $(npm -v)"
+
+            mkdir -p "${RELEASE_DIR}"
+
+            tar -xzf /tmp/release.tar.gz \
+              --strip-components=1 \
+              -C "${RELEASE_DIR}"
+
+            # Assert the expected layout is present — fail fast before
+            # any process is touched if the tarball structure drifted.
+            for required_path in \
+              "${RELEASE_DIR}/backend/dist/server.js" \
+              "${RELEASE_DIR}/backend/node_modules" \
+              "${RELEASE_DIR}/frontend/standalone/server.js" \
+              "${RELEASE_DIR}/frontend/standalone/.next/static" \
+              "${RELEASE_DIR}/frontend/standalone/public"
+            do
+              if [ ! -e "${required_path}" ]; then
+                echo "FATAL: Expected path missing after unpack: ${required_path}"
+                echo "Artifact structure has drifted — aborting before touching server."
+                rm -rf "${RELEASE_DIR}"
+                exit 1
+              fi
+            done
+            echo "=== Release layout verified ===" && ls "${RELEASE_DIR}"
+
+             # Backend .env — written atomically via temp file then moved
+            cat > "${SHARED_DIR}/.env.backend" << EOF
+            PORT=${PORT}
+            MONGO_URL=${MONGO_URL}
+            NEXT_PUBLIC_RAZORPAY_KEY_ID=${NEXT_PUBLIC_RAZORPAY_KEY_ID}
+            CLOUD_API_KEY=${CLOUD_API_KEY}
+            CLOUD_API_SECRET=${CLOUD_API_SECRET}
+            CLOUD_NAME=${CLOUD_NAME}
+            ENABLE_MORGAN=${ENABLE_MORGAN}
+            JWT_EXPIRES_IN=${JWT_EXPIRES_IN}
+            JWT_SECRET=${JWT_SECRET}
+            MONGO_URL=${MONGO_URL}
+            NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+            NODE_ENV=${NODE_ENV}
+            PORT=${PORT}
+            PRODUCTION_CLIENT_URL1=${PRODUCTION_CLIENT_URL1}
+            PRODUCTION_CLIENT_URL2=${PRODUCTION_CLIENT_URL2}
+            EOF
+
+            # Frontend .env
+            cat > "${SHARED_DIR}/.env.frontend" <<EOF
+            NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+            EOF
+
+            # Symlink shared env files into the new release
+            ln -sfn "${SHARED_DIR}/.env.backend"  "${RELEASE_DIR}/backend/.env"
+            ln -sfn "${SHARED_DIR}/.env.frontend" "${RELEASE_DIR}/frontend/standalone/.env"
+
+
+            # cd "${RELEASE_DIR}/backend"
+            # npm ci --omit=dev
+            rollback() {
+              echo "!!! Deployment failed — rolling back !!!"
+              if [ -n "${PREVIOUS_RELEASE}" ] && [ -d "${PREVIOUS_RELEASE}" ]; then
+                echo "Switching symlink back to ${PREVIOUS_RELEASE}"
+                ln -sfn "${PREVIOUS_RELEASE}" "${CURRENT_LINK}"
+
+                PREV_BACKEND="${PREVIOUS_RELEASE}/backend/dist/server.js"
+                PREV_FRONTEND="${PREVIOUS_RELEASE}/frontend/standalone/server.js"
+
+                if [ -f "${PREV_BACKEND}" ]; then
+                  pm2 delete ${APP_NAME}-backend 2>/dev/null || true
+                  pm2 start "${PREV_BACKEND}" \
+                    --name ${APP_NAME}-backend \
+                    --cwd  "${PREVIOUS_RELEASE}/backend" \
+                    --env  production
+                fi
+
+                if [ -f "${PREV_FRONTEND}" ]; then
+                  pm2 delete ${APP_NAME}-frontend 2>/dev/null || true
+                  pm2 start "${PREV_FRONTEND}" \
+                    --name ${APP_NAME}-frontend \
+                    --cwd  "${PREVIOUS_RELEASE}/frontend/standalone"
+                fi
+
+                pm2 save
+                echo "Rollback complete."
+              else
+                echo "No previous release to roll back to. Server may be in a degraded state."
+              fi
+            }
+
+            trap rollback ERR
+
+            BACKEND_ENTRY="${RELEASE_DIR}/backend/server.js"
+
+            if [ ! -f "${BACKEND_ENTRY}" ]; then
+              echo "ERROR: Backend entry not found at ${BACKEND_ENTRY}"
+              exit 1
+            fi
+
+            pm2 describe ${APP_NAME}-backend >/dev/null 2>&1 && pm2 delete ${APP_NAME}-backend
+
+            pm2 start "${BACKEND_ENTRY}" \
+              --name ${APP_NAME}-backend \
+              --cwd  "${RELEASE_DIR}/backend" \
+              --time
+            
+            ################################################################
+            # START FRONTEND
+            ################################################################
+
+            FRONTEND_ENTRY="${RELEASE_DIR}/frontend/standalone/server.js"
+
+            if [ ! -f "${FRONTEND_ENTRY}" ]; then
+              echo "ERROR: Frontend standalone server.js not found at ${FRONTEND_ENTRY}"
+              echo "Make sure next.config.js has: output: 'standalone'"
+              exit 1
+            fi
+
+            pm2 describe ${APP_NAME}-frontend >/dev/null 2>&1 && pm2 delete ${APP_NAME}-frontend
+
+            pm2 start "${FRONTEND_ENTRY}" \
+              --name ${APP_NAME}-frontend \
+              --cwd  "${RELEASE_DIR}/frontend/standalone" \
+              --time
+
+            echo "Waiting for services to boot..."
+
+            for i in $(seq 1 15); do
+                if curl -fsS --max-time 5 http://localhost:/api/v1/health; then
+                    echo "Backend healthy ✓"
+                    exit 0
+                fi
+
+                sleep 2
+            done
+            echo "ERROR: Backend health check failed"
+            exit 1
+
+            if ! curl -fsS --max-time 10 http://localhost:3000; then
+              echo "ERROR: Frontend health check failed"
+              exit 1
+            fi
+            echo "Frontend healthy ✓"
+            
+
+            trap - ERR   # Disarm — health checks passed
+
+            ################################################################
+            # SWITCH CURRENT SYMLINK
+            ################################################################
+
+            ln -sfn "${RELEASE_DIR}" "${CURRENT_LINK}"
+            echo "Current → ${RELEASE_DIR}"
+
+            ################################################################
+            # PM2 PERSISTENCE
+            ################################################################
+
+            pm2 save
+
+            if [ ! -f /etc/systemd/system/pm2-$(whoami).service ]; then
+              sudo env PATH=$PATH:$(dirname $(which node)) \
+                pm2 startup systemd -u $(whoami) --hp $HOME || true
+            fi
+
+            ################################################################
+            # CLEAN OLD RELEASES  (keep last 5)
+            ################################################################
+
+            find "${RELEASES_DIR}" \
+              -mindepth 1 -maxdepth 1 \
+              -type d \
+              | sort -r \
+              | tail -n +6 \
+              | xargs -r rm -rf
+
+            ################################################################
+            # DONE
+            ################################################################
+
+            pm2 status
+            rm -f /tmp/release.tar.gz
+            
+          displayName: 'Deploy on Server'
+          timeoutInMinutes: 10
+
+            
+
+
+
+
+        
+
+
+      
