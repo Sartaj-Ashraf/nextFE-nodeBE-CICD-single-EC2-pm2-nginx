@@ -5,7 +5,7 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { useInView } from "react-intersection-observer";
 
 import { LoadingSpinner, TechStackCard } from "@/components";
-import InquiryForm from "@/components/shared/InquiryForm";
+import EnquiryForm from "@/components/client/enquiry/EnquiryForm";
 import { customFetch } from "@/utils/customFetch";
 import { Grid, List } from "lucide-react";
 import FormModal from "@/components/shared/FormModal";
@@ -73,7 +73,7 @@ export default function TechStackPage() {
           <div className="space-y-12">
             <div className=" grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               <div className="relative hidden lg:block  ">
-                <InquiryForm />
+                <EnquiryForm />
               </div>
               <div className="col-span-1 md:col-span-2">
                 <div className="relativef md:flex items-center justify-between">
