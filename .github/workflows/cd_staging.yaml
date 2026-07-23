@@ -60,7 +60,7 @@ jobs:
           cp -r frontend/.next/static     release/frontend/standalone/.next/static
           cp -r frontend/public           release/frontend/standalone/public
 
-          tar -czf release.tar.gz 
+          tar -czf release.tar.gz release
           echo "Size of the file is $(ls -lh release.tar.gz | awk '{print $5}')"
           
       - name: Upload Artifact
