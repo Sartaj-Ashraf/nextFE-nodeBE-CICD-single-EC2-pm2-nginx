@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - staging
-pr: none
 
 env:
   NODE_VERSION: '20'
