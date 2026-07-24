@@ -157,7 +157,7 @@ jobs:
             echo "Injecting env variables "
             # Backend .env — written atomically via temp file then moved
             cat > "${SHARED_DIR}/.env.backend" << EOF
-            PORT=${PORT}
+            # PORT=${PORT}
             MONGO_URL=${MONGO_URL}
             NEXT_PUBLIC_RAZORPAY_KEY_ID=${NEXT_PUBLIC_RAZORPAY_KEY_ID}
             CLOUD_API_KEY=${CLOUD_API_KEY}
@@ -169,7 +169,6 @@ jobs:
             MONGO_URL=${MONGO_URL}
             NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
             NODE_ENV=${NODE_ENV}
-            PORT=${PORT}
             PRODUCTION_CLIENT_URL1=${PRODUCTION_CLIENT_URL1}
             PRODUCTION_CLIENT_URL2=${PRODUCTION_CLIENT_URL2}
             EOF
