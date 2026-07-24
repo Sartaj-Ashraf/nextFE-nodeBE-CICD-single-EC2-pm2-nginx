@@ -212,7 +212,7 @@ jobs:
             }
 
             trap rollback ERR
-
+            echo "backend entry ${RELEASE_DIR}/backend/server.js"
             BACKEND_ENTRY="${RELEASE_DIR}/backend/server.js"
 
             if [ ! -f "${BACKEND_ENTRY}" ]; then
@@ -230,7 +230,7 @@ jobs:
             ################################################################
             # START FRONTEND
             ################################################################
-
+            echo "Start frontend entry"
             FRONTEND_ENTRY="${RELEASE_DIR}/frontend/standalone/server.js"
 
             if [ ! -f "${FRONTEND_ENTRY}" ]; then
