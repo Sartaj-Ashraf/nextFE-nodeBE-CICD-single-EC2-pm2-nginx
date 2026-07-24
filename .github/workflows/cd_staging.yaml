@@ -234,6 +234,7 @@ jobs:
               --name ${APP_NAME}-backend \
               --cwd  "${RELEASE_DIR}/backend" \
               --time
+
             echo "Backend started"
 
 
@@ -253,10 +254,12 @@ jobs:
                 pm2 delete "${APP_NAME}-backend"
             fi
 
-            PORT=${FRONTEND_PORT}pm2 start "${FRONTEND_ENTRY}" \
+            PORT=${FRONTEND_PORT} pm2 start "${FRONTEND_ENTRY}" \
               --name ${APP_NAME}-frontend \
               --cwd  "${RELEASE_DIR}/frontend/standalone" \
               --time
+
+            echo "Frontend stated withing for services to boot"
 
             echo "Waiting for services to boot..."
 
