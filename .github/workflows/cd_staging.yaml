@@ -222,7 +222,7 @@ jobs:
             # fi
             echo "check passed"
  
-            # pm2 describe ${APP_NAME}-backend >/dev/null 2>&1 && pm2 delete ${APP_NAME}-backend
+            pm2 list | grep -q "${APP_NAME}-backend" && pm2 describe ${APP_NAME}-backend >/dev/null 2>&1 && pm2 delete ${APP_NAME}-backend
             echo "Describe app checked"
 
             pm2 start "${BACKEND_ENTRY}" \
@@ -242,7 +242,7 @@ jobs:
               exit 1
             fi
 
-            pm2 describe ${APP_NAME}-frontend >/dev/null 2>&1 && pm2 delete ${APP_NAME}-frontend
+            pm2 list | grep -q "${APP_NAME}-frontend" && pm2 describe ${APP_NAME}-frontend >/dev/null 2>&1 && pm2 delete ${APP_NAME}-frontend
 
             pm2 start "${FRONTEND_ENTRY}" \
               --name ${APP_NAME}-frontend \
