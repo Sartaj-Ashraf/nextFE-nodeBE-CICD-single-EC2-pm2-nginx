@@ -156,14 +156,12 @@ jobs:
             # Backend .env — written atomically via temp file then moved
             cat > "${SHARED_DIR}/.env.backend" << EOF
             MONGO_URL=${MONGO_URL}
-            NEXT_PUBLIC_RAZORPAY_KEY_ID=${NEXT_PUBLIC_RAZORPAY_KEY_ID}
             CLOUD_API_KEY=${CLOUD_API_KEY}
             CLOUD_API_SECRET=${CLOUD_API_SECRET}
             CLOUD_NAME=${CLOUD_NAME}
             ENABLE_MORGAN=${ENABLE_MORGAN}
             JWT_EXPIRES_IN=${JWT_EXPIRES_IN}
             JWT_SECRET=${JWT_SECRET}
-            NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
             NODE_ENV=${NODE_ENV}
             PRODUCTION_CLIENT_URL1=${PRODUCTION_CLIENT_URL1}
             PRODUCTION_CLIENT_URL2=${PRODUCTION_CLIENT_URL2}
