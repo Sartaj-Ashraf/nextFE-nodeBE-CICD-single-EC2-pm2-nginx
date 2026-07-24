@@ -98,12 +98,12 @@ jobs:
       - name: Extract files on the server
         uses: appleboy/ssh-action@v1.0.3
         env:
+          PORT: ${{secrets.PORT}}
           CLOUD_API_KEY: ${{ secrets.CLOUD_API_KEY }}
           CLOUD_API_SECRET: ${{ secrets.CLOUD_API_SECRET }}
           CLOUD_NAME: ${{ secrets.CLOUD_NAME }}
           ENABLE_MORGAN: ${{ secrets.ENABLE_MORGAN }}
           JWT_EXPIRES_IN: ${{ secrets.JWT_EXPIRES_IN }}
-          PORT: "5004"
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           MONGO_URL: ${{ secrets.MONGO_URL }}
           NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
@@ -116,7 +116,7 @@ jobs:
           key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
           command_timeout: 15m
           script_stop: true
-          envs: CLOUD_API_KEY, CLOUD_API_SECRET, CLOUD_NAME, ENABLE_MORGAN, JWT_EXPIRES_IN, PORT, JWT_SECRET, MONGO_URL, NEXT_PUBLIC_API_URL, NODE_ENV, PRODUCTION_CLIENT_URL1, PRODUCTION_CLIENT_URL2
+          envs: PORT,CLOUD_API_KEY, CLOUD_API_SECRET, CLOUD_NAME, ENABLE_MORGAN, JWT_EXPIRES_IN, PORT, JWT_SECRET, MONGO_URL, NEXT_PUBLIC_API_URL, NODE_ENV, PRODUCTION_CLIENT_URL1, PRODUCTION_CLIENT_URL2
           script: |
             set -Eeuo pipefail
             BACKEND_PORT=5006
@@ -156,6 +156,7 @@ jobs:
             echo "Injecting env variables "
             # Backend .env — written atomically via temp file then moved
             cat > "${SHARED_DIR}/.env.backend" << EOF
+            PORT=${PORT}
             MONGO_URL=${MONGO_URL}
             CLOUD_API_KEY=${CLOUD_API_KEY}
             CLOUD_API_SECRET=${CLOUD_API_SECRET}
@@ -250,8 +251,8 @@ jobs:
               exit 1
             fi
 
-            if pm2 describe "${APP_NAME}-backend" >/dev/null 2>&1; then
-                pm2 delete "${APP_NAME}-backend"
+            if pm2 describe "${APP_NAME}-frontend" >/dev/null 2>&1; then
+                pm2 delete "${APP_NAME}-frontend"
             fi
 
             PORT=${FRONTEND_PORT} pm2 start "${FRONTEND_ENTRY}" \
@@ -263,17 +264,20 @@ jobs:
 
             echo "Waiting for services to boot..."
 
+            BACKEND_UP=false
             for i in $(seq 1 15); do
-                echo "Attempt $i/15 http://localhost:${BACKEND_PORT}/api/v1/health"
-                if curl -fsS --max-time 5 http://localhost:${BACKEND_PORT}/api/v1/health; then
+                if curl -fsS --max-time 5 "http://localhost:${BACKEND_PORT}/api/v1/health"; then
                     echo "Backend healthy ✓"
+                    BACKEND_UP=true
                     break
                 fi
-
                 sleep 2
             done
-            echo "ERROR: Backend health check failed"
-            exit 1
+
+            if [ "${BACKEND_UP}" != true ]; then
+                echo "ERROR: Backend health check failed"
+                exit 1
+            fi
 
             if ! curl -fsS --max-time 10 http://localhost:${FRONTEND_PORT}; then
               echo "ERROR: Frontend health check failed"
