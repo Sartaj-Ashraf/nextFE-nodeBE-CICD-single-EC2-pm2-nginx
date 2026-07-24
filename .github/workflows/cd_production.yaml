@@ -1,0 +1,6 @@
+name: "Push changes to the production environment"
+
+on:
+  push:
+    branches:
+      - production

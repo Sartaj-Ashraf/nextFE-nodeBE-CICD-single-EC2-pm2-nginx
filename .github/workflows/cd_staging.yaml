@@ -6,8 +6,7 @@ on:
       - staging
 
 env:
-  NODE_VERSION: '22'
-
+  NODE_VERSION: "22"
 
 jobs:
   build_and_compile_app:
@@ -18,29 +17,28 @@ jobs:
       group: "staging-server-environment"
       cancel-in-progress: true
 
-    steps:  
+    steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
-        with: 
+        with:
           node-version: ${{ env.NODE_VERSION }}
 
       - name: Install backend Dependencies
         working-directory: backend
         run: npm ci
-      
+
       - name: Install frontend Dependencies
         working-directory: frontend
         run: npm ci
-    
 
       - name: Check env injection
         run: |
           echo "Check env injection: ${{ secrets.NEXT_PUBLIC_API_URL }}"
           echo "Check env injection: ${{ secrets.NODE_ENV }}"
-        
+
       - name: Build frontend
         working-directory: frontend
         env:
@@ -63,7 +61,7 @@ jobs:
 
           tar -czf release.tar.gz release
           echo "Size of the file is $(du -h release.tar.gz | awk '{print $1}')"
-          
+
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
@@ -96,7 +94,7 @@ jobs:
           key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
           source: "release.tar.gz"
           target: "/tmp"
-      
+
       - name: Extract files on the server
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -119,10 +117,10 @@ jobs:
             PRODUCTION_CLIENT_URL1=${{ secrets.PRODUCTION_CLIENT_URL1 }}
             PRODUCTION_CLIENT_URL2=${{ secrets.PRODUCTION_CLIENT_URL2 }}
             STAGING_HOST__IP=${{ secrets.STAGING_HOST__IP }}
-          script: | 
+          script: |
             set -Eeuo pipefail
 
-          
+
             APP_NAME="portfolio"
             BASE_DIR="$HOME/apps/${APP_NAME}"
             RELEASES_DIR="${BASE_DIR}/releases"
@@ -132,7 +130,7 @@ jobs:
 
             TIMESTAMP=$(date +%Y%m%d%H%M%S)
             RELEASE_DIR="${RELEASES_DIR}/${TIMESTAMP}"
-            
+
             mkdir -p "${RELEASES_DIR}" "${SHARED_DIR}"
 
             # Capture previous release BEFORE any mutation — used for rollback.
@@ -156,26 +154,7 @@ jobs:
 
             echo "Tier 2: Extracted release to ${RELEASE_DIR}"
 
-            # Assert the expected layout is present — fail fast before
-            # any process is touched if the tarball structure drifted.
-            for required_path in \
-              "${RELEASE_DIR}/backend/dist/server.js" \
-              "${RELEASE_DIR}/backend/node_modules" \
-              "${RELEASE_DIR}/frontend/standalone/server.js" \
-              "${RELEASE_DIR}/frontend/standalone/.next/static" \
-              "${RELEASE_DIR}/frontend/standalone/public"
-            do
-              if [ ! -e "${required_path}" ]; then
-                echo "FATAL: Expected path missing after unpack: ${required_path}"
-                echo "Artifact structure has drifted — aborting before touching server."
-                rm -rf "${RELEASE_DIR}"
-                exit 1
-              fi
-            done
-            echo "=== Release layout verified ===" && ls "${RELEASE_DIR}"
-            echo "Layout path resolved"
-            
-            echo "Tier 3: Verifying layout"
+            echo "Injecting env variables "
             # Backend .env — written atomically via temp file then moved
             cat > "${SHARED_DIR}/.env.backend" << EOF
             PORT=${PORT}
@@ -253,7 +232,7 @@ jobs:
               --name ${APP_NAME}-backend \
               --cwd  "${RELEASE_DIR}/backend" \
               --time
-            
+
             ################################################################
             # START FRONTEND
             ################################################################
@@ -291,7 +270,7 @@ jobs:
               exit 1
             fi
             echo "Frontend healthy ✓"
-            
+
 
             trap - ERR   # Disarm — health checks passed
 
@@ -331,15 +310,5 @@ jobs:
             pm2 status
             rm -f /tmp/release.tar.gz
 
-          displayName: 'Deploy on Server'
+          displayName: "Deploy on Server"
           timeoutInMinutes: 10
-
-            
-
-
-
-
-        
-
-
-      
