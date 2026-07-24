@@ -212,6 +212,7 @@ jobs:
             }
 
             trap rollback ERR
+
             echo "backend entry ${RELEASE_DIR}/backend/server.js"
             BACKEND_ENTRY="${RELEASE_DIR}/backend/server.js"
 
@@ -219,18 +220,19 @@ jobs:
               echo "ERROR: Backend entry not found at ${BACKEND_ENTRY}"
               exit 1
             fi
-
+            echo "check passed"
+ 
             pm2 describe ${APP_NAME}-backend >/dev/null 2>&1 && pm2 delete ${APP_NAME}-backend
 
             pm2 start "${BACKEND_ENTRY}" \
               --name ${APP_NAME}-backend \
               --cwd  "${RELEASE_DIR}/backend" \
               --time
-
+            echo "Backend started"
             ################################################################
             # START FRONTEND
             ################################################################
-            echo "Start frontend entry"
+            echo "Start frontend entry ${RELEASE_DIR}/frontend/standalone/server.js"
             FRONTEND_ENTRY="${RELEASE_DIR}/frontend/standalone/server.js"
 
             if [ ! -f "${FRONTEND_ENTRY}" ]; then
