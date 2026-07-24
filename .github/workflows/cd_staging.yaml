@@ -264,7 +264,7 @@ jobs:
             echo "Waiting for services to boot..."
 
             for i in $(seq 1 15); do
-                if curl -fsS --max-time 5 http://localhost:/api/v1/health; then
+                if curl -fsS --max-time 5 http://localhost:${BACKEND_PORT}/api/v1/health; then
                     echo "Backend healthy ✓"
                     break
                 fi
@@ -274,7 +274,7 @@ jobs:
             echo "ERROR: Backend health check failed"
             exit 1
 
-            if ! curl -fsS --max-time 10 http://localhost:3000; then
+            if ! curl -fsS --max-time 10 http://localhost:${FRONTEND_PORT}; then
               echo "ERROR: Frontend health check failed"
               exit 1
             fi
