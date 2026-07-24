@@ -148,10 +148,13 @@ jobs:
             echo "Node: $(node -v)  NPM: $(npm -v)"
 
             mkdir -p "${RELEASE_DIR}"
+            echo "Tier 1: Created release directory ${RELEASE_DIR}"
 
             tar -xzf /tmp/release.tar.gz \
-              --strip-components=1 \
-              -C "${RELEASE_DIR}"
+              -C "${RELEASE_DIR}" \
+              --strip-components=1
+
+            echo "Tier 2: Extracted release to ${RELEASE_DIR}"
 
             # Assert the expected layout is present — fail fast before
             # any process is touched if the tarball structure drifted.
@@ -170,8 +173,10 @@ jobs:
               fi
             done
             echo "=== Release layout verified ===" && ls "${RELEASE_DIR}"
-
-             # Backend .env — written atomically via temp file then moved
+            echo "Layout path resolved"
+            
+            echo "Tier 3: Verifying layout"
+            # Backend .env — written atomically via temp file then moved
             cat > "${SHARED_DIR}/.env.backend" << EOF
             PORT=${PORT}
             MONGO_URL=${MONGO_URL}
