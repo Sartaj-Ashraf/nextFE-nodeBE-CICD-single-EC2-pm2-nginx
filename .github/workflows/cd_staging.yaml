@@ -97,36 +97,34 @@ jobs:
 
       - name: Extract files on the server
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          CLOUD_API_KEY: ${{ secrets.CLOUD_API_KEY }}
+          CLOUD_API_SECRET: ${{ secrets.CLOUD_API_SECRET }}
+          CLOUD_NAME: ${{ secrets.CLOUD_NAME }}
+          ENABLE_MORGAN: ${{ secrets.ENABLE_MORGAN }}
+          JWT_EXPIRES_IN: ${{ secrets.JWT_EXPIRES_IN }}
+          PORT: "5004"
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          MONGO_URL: ${{ secrets.MONGO_URL }}
+          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+          NODE_ENV: ${{ secrets.NODE_ENV }}
+          PRODUCTION_CLIENT_URL1: ${{ secrets.PRODUCTION_CLIENT_URL1 }}
+          PRODUCTION_CLIENT_URL2: ${{ secrets.PRODUCTION_CLIENT_URL2 }}
         with:
           host: ${{ secrets.STAGING_SERVER_IP }}
           username: ${{ secrets.STAGING_SERVER_USER }}
           key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
           command_timeout: 15m
           script_stop: true
-          envs: |
-            CLOUD_API_KEY=${{ secrets.CLOUD_API_KEY }}
-            CLOUD_API_SECRET=${{ secrets.CLOUD_API_SECRET }}
-            CLOUD_NAME=${{ secrets.CLOUD_NAME }}
-            ENABLE_MORGAN=${{ secrets.ENABLE_MORGAN }}
-            JWT_EXPIRES_IN=${{ secrets.JWT_EXPIRES_IN }}
-            PORT=${{ secrets.PORT }}
-            JWT_SECRET=${{ secrets.JWT_SECRET }}
-            MONGO_URL=${{ secrets.MONGO_URL }}
-            NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}
-            NODE_ENV=${{ secrets.NODE_ENV }}
-            PRODUCTION_CLIENT_URL1=${{ secrets.PRODUCTION_CLIENT_URL1 }}
-            PRODUCTION_CLIENT_URL2=${{ secrets.PRODUCTION_CLIENT_URL2 }}
-            STAGING_HOST__IP=${{ secrets.STAGING_HOST__IP }}
+          envs: CLOUD_API_KEY, CLOUD_API_SECRET, CLOUD_NAME, ENABLE_MORGAN, JWT_EXPIRES_IN, PORT, JWT_SECRET, MONGO_URL, NEXT_PUBLIC_API_URL, NODE_ENV, PRODUCTION_CLIENT_URL1, PRODUCTION_CLIENT_URL2
           script: |
             set -Eeuo pipefail
-
 
             APP_NAME="portfolio"
             BASE_DIR="$HOME/apps/${APP_NAME}"
             RELEASES_DIR="${BASE_DIR}/releases"
             SHARED_DIR="${BASE_DIR}/shared"
             CURRENT_LINK="${BASE_DIR}/current"
-
 
             TIMESTAMP=$(date +%Y%m%d%H%M%S)
             RELEASE_DIR="${RELEASES_DIR}/${TIMESTAMP}"
