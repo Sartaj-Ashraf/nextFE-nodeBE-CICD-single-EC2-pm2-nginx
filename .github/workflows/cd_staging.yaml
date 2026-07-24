@@ -264,6 +264,7 @@ jobs:
             echo "Waiting for services to boot..."
 
             for i in $(seq 1 15); do
+                echo "Attempt $i/15 http://localhost:${BACKEND_PORT}/api/v1/health"
                 if curl -fsS --max-time 5 http://localhost:${BACKEND_PORT}/api/v1/health; then
                     echo "Backend healthy ✓"
                     break

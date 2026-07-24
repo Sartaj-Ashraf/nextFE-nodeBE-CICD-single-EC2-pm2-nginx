@@ -27,13 +27,13 @@ const Hero = () => {
           />
           
           <div className="relative z-10 px-8 md:px-16 max-w-md transition-all duration-500">
-            <h2 className="text-5xl md:text-7xl font-bold text-gray-100 mb-8">designer</h2>
+            <h2 className="text-5xl md:text-7xl font-bold text-gray-100 mb-8">DevOps</h2>
             <p className="text-lg md:text-xl text-gray-300 mb-6">
-              Product designer specialising in UI design and design systems.
+              Simplifying complex processes and making operations seamless.
             </p>
             <div className="flex items-center gap-4">
               <Link href="#design-projects" className="inline-flex items-center text-gray-200 hover:text-blue-400 font-medium">
-                See my design work <ArrowRight className="ml-2" size={18} />
+                See my devOps work <ArrowRight className="ml-2" size={18} />
               </Link>
             </div>
           </div>
