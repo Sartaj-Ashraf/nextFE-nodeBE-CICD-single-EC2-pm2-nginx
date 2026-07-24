@@ -222,7 +222,7 @@ jobs:
             # fi
             echo "check passed"
  
-            pm2 describe ${APP_NAME}-backend >/dev/null 2>&1 && pm2 delete ${APP_NAME}-backend
+            # pm2 describe ${APP_NAME}-backend >/dev/null 2>&1 && pm2 delete ${APP_NAME}-backend
             echo "Describe app checked"
 
             pm2 start "${BACKEND_ENTRY}" \
